@@ -1,0 +1,150 @@
+flint/
+│
+├── flint/                                  # 主包
+│   ├── __init__.py                         # __version__、包级常量
+│   ├── __main__.py                         # 入口：CLI 参数解析 → app.run()
+│   ├── app.py                              # QApplication 初始化、高 DPI、QSS、异常钩子、日志
+│   │
+│   ├── ui/                                 # ── 前端：界面与交互层 ──
+│   │   ├── __init__.py
+│   │   ├── main_window.py                  # 主窗口：顶部 QTabBar + QSplitter(左/右) + 底部 Hint 区
+│   │   ├── router.py                       # 顶级标签注册、标签内左/右页面配对与切换
+│   │   ├── state.py                        # UI 级全局状态（当前标签/选中版本/当前账户/运行进程）
+│   │   ├── bridge.py                       # ★ 前后端唯一耦合点：asyncio → Qt Signal
+│   │   ├── hint_bar.py                     # 底部非模态提示条（滑入淡出、自动消失）
+│   │   ├── overlay.py                      # 内容区遮罩 + 内嵌消息框（替代 QMessageBox）
+│   │   │
+│   │   ├── pages/                          # 顶级标签页，每个标签 = 左栏 + 右栏
+│   │   │   ├── __init__.py
+│   │   │   ├── launch/                     # 标签：启动
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── left.py                 # 版本列表（QListView + delegate，右键菜单）
+│   │   │   │   └── right.py                # 大启动按钮 + 账户行 + 快捷设置 + 日志摘要
+│   │   │   ├── download/                   # 标签：下载
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── left.py                 # 分类导航（游戏/Mod/整合包/资源包）
+│   │   │   │   └── right.py                # 内容列表 + 搜索 + 安装进度内嵌面板
+│   │   │   ├── settings/                   # 标签：设置
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── left.py                 # 设置分类（启动/Java/界面/下载/联机）
+│   │   │   │   └── right.py                # 具体选项表单，即时保存
+│   │   │   └── tools/                      # 标签：更多
+│   │   │       ├── __init__.py
+│   │   │       ├── left.py                 # 工具分类（日志/模组管理/账户/关于）
+│   │   │       └── right.py                # 对应工具面板
+│   │   │
+│   │   ├── views/                          # 右栏可复用的复合视图
+│   │   │   ├── __init__.py
+│   │   │   ├── launch_panel.py             # 启动面板（大按钮 + 账户 + 内存滑块）
+│   │   │   ├── install_panel.py            # 安装配置 + 进度内嵌
+│   │   │   ├── mods_panel.py               # 模组/资源包列表与启停
+│   │   │   ├── account_panel.py            # 账户列表与登录
+│   │   │   ├── log_panel.py                # 彩色高亮 + 环形缓冲日志
+│   │   │   └── about_panel.py              # 版本信息 / GPLv3 / 致谢
+│   │   │
+│   │   ├── widgets/                        # 原子控件
+│   │   │   ├── __init__.py
+│   │   │   ├── big_button.py               # 主色大按钮（启动用）
+│   │   │   ├── version_item.py             # 版本列表项 delegate
+│   │   │   ├── memory_slider.py            # 内存分配滑块 + 数值联动
+│   │   │   ├── progress_dialog.py          # 模态进度（带“后台运行”）
+│   │   │   ├── task_panel.py               # 并发任务浮层
+│   │   │   ├── toast.py                    # 右上角轻量通知
+│   │   │   ├── avatar.py                   # 账户头像/皮肤预览
+│   │   │   └── log_view.py                 # QPlainTextEdit + 批量追加
+│   │   │
+│   │   ├── theme/
+│   │   │   ├── light.qss
+│   │   │   ├── dark.qss
+│   │   │   └── icons/                      # SVG 图标（Lucide）
+│   │   │
+│   │   └── i18n/
+│   │       ├── flint_zh_CN.ts
+│   │       └── flint_en_US.ts
+│   │
+│   ├── core/                               # ── 后端：应用服务层（纯 Python，可单测）──
+│   │   ├── __init__.py
+│   │   ├── config.py                       # 常量/默认值/配置读写（TOML/JSON）
+│   │   ├── events.py                       # 事件总线（进度/日志/状态）
+│   │   ├── tasks.py                        # Task 抽象 + TaskRunner
+│   │   ├── instance.py                     # 实例模型与 CRUD/复制/导入导出
+│   │   ├── version.py                      # manifest 拉取、版本解析、继承链合并、rules 过滤
+│   │   ├── loader.py                       # Forge/Fabric/Quilt/NeoForge 安装
+│   │   ├── account.py                      # 微软 OAuth / 离线账户
+│   │   ├── launcher.py                     # 启动编排（classpath/JVM/游戏参数/natives）
+│   │   ├── libraries.py                    # libraries 下载计划、natives 分类
+│   │   ├── assets.py                       # assets index 解析与补全
+│   │   └── mods.py                         # mods/ resourcepacks/ 扫描与启停
+│   │
+│   ├── infra/                              # ── 后端：基础设施层（原子能力）──
+│   │   ├── __init__.py
+│   │   ├── http.py                         # 统一 httpx 客户端（代理/超时/UA）
+│   │   ├── downloader.py                   # 并发下载、续传、镜像、重试退避
+│   │   ├── hash.py                         # ★ 经 native_loader 调 C++，纯 Python 兜底
+│   │   ├── extract.py                      # ★ 经 native_loader 调 C++ 解压
+│   │   ├── fs.py                           # 原子写、临时文件、大文件复制
+│   │   ├── process.py                      # subprocess 封装、stdout/stderr 异步读、进程树终止
+│   │   ├── cache.py                        # ETag 缓存
+│   │   └── native_loader.py                # ★ C++ 动态库定位/加载/ABI 校验/回退
+│   │
+│   ├── platform/                           # ── 后端：平台适配层 ──
+│   │   ├── __init__.py
+│   │   ├── paths.py                        # 各 OS 标准数据目录
+│   │   ├── java.py                         # JRE/JDK 探测、版本匹配
+│   │   ├── proc.py                         # 无窗口子进程、进程组、优雅终止
+│   │   └── perm.py                         # 沙箱/权限/可执行位
+│   │
+│   ├── lib/                                # 运行时 C++ 动态库产物目录
+│   │   ├── .gitkeep
+│   │   └── (构建产物：flint_native.dll / libflint_native.dylib / libflint_native.so)
+│   │
+│   └── native/                             # ── C++ 核心库 ──
+│       ├── include/
+│       │   └── flint_native.h              # extern "C" 导出声明（稳定 ABI）
+│       ├── src/
+│       │   ├── hash.cpp                    # 分块 SHA1/SHA256
+│       │   ├── unzip.cpp                   # ZIP 解压
+│       │   ├── fs.cpp                      # 大文件复制/原子写
+│       │   ├── abort.cpp                   # 取消令牌/中断支持
+│       │   └── version.cpp                 # ABI 版本号导出
+│       ├── bindings/
+│       │   └── pybind11_module.cpp         # 预留：未来升级 pybind11
+│       ├── third_party/
+│       │   ├── miniz/                      # 轻量 ZIP 库
+│       │   └── sha2/                       # 哈希实现
+│       ├── CMakeLists.txt                  # 统一 CMake 构建 + stage 目标
+│       └── README.md                       # 构建产物命名与放置约定
+│
+├── tests/                                  # pytest + pytest-asyncio + respx
+│   ├── conftest.py
+│   ├── test_version.py
+│   ├── test_downloader.py
+│   ├── test_hash.py                        # C++ 与纯 Python 结果对比
+│   ├── test_extract.py
+│   ├── test_launcher.py
+│   ├── test_instance.py
+│   ├── test_account.py
+│   └── test_native_loader.py               # 加载失败/ABI 不匹配回退测试
+│
+├── build/                                  # 打包与分发
+│   ├── nuitka.py                           # Nuitka 主配置
+│   ├── briefcase.toml                      # Briefcase 备选
+│   ├── cmake_build.py                      # 三平台 C++ 库编译
+│   └── stage_native.py                     # 产物放入 flint/lib/
+│
+├── .github/
+│   └── workflows/
+│       ├── test.yml                        # 三平台测试（含 C++ 编译）
+│       └── release.yml                     # 三平台构建 + 发布
+│
+├── docs/
+│   ├── architecture.md                     # 分层图 + 依赖方向
+│   ├── ui.md                               # PCL 式导航模型与页面配对规则
+│   ├── native.md                           # C++ ABI 约定、构建、回退策略
+│   └── contributing.md
+│
+├── LICENSE                                 # GPLv3
+├── README.md
+├── pyproject.toml                          # 依赖、scikit-build-core、工具配置
+├── .gitignore
+└── .pre-commit-config.yaml                 # ruff / mypy / clang-format 钩子

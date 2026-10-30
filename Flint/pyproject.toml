@@ -1,0 +1,76 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "tomlkit>=0.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "flint"
+description = "Flint - a fast, native-assisted Minecraft launcher"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "Flint Contributors" }]
+keywords = ["minecraft", "launcher", "qt", "pyside6"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment",
+]
+dependencies = [
+    "PySide6>=6.6",
+    "httpx>=0.28",
+    "tomlkit>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+]
+
+[tool.scikit-build]
+wheel.packages = ["flint"]
+build-dir = "build/{wheel_tag}"
+
+[tool.scikit-build.cmake]
+minimum-version = "3.18"
+build-type = "Release"
+source-dir = "native"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+filterwarnings = ["error::DeprecationWarning:flint.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["flint", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["build/", "tests/"]
+
+[tool.coverage.run]
+source = ["flint"]
+omit = ["flint/native/*", "tests/*"]

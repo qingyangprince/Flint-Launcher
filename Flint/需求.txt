@@ -1,0 +1,392 @@
+# Flint 全模块需求清单
+按目录树逐项列出每个文件/目录的**职责、关键接口、依赖关系、验收标准**。这是开发时的检查清单。
+
+---
+
+## 一、根目录文件
+
+| 文件 | 需求 |
+|---|---|
+| `LICENSE` | GPLv3 全文，不可修改 |
+| `README.md` | 项目简介、截图、三平台安装方式、构建命令、贡献指南入口、开源许可声明 |
+| `pyproject.toml` | 声明 Python ≥3.11、依赖（PySide6/httpx/tomlkit 等）、构建后端（scikit-build-core 集成 CMake）、ruff/mypy/pytest 配置 |
+| `.gitignore` | 忽略 `__pycache__`、`flint/lib/*.dll/.so/.dylib`、`build/`、`.venv`、`*.egg-info` |
+| `.pre-commit-config.yaml` | 钩子：ruff format、ruff check、mypy、clang-format（C++ 文件）、end-of-file-fixer |
+
+---
+
+## 二、`flint/` 主包根文件
+
+### `flint/__init__.py`
+- **需求**：导出 `__version__`（语义化版本）、`APP_NAME = "Flint"`、`APP_ID`（用于 QSettings 和路径）
+- **验收**：`import flint; flint.__version__` 可用
+
+### `flint/__main__.py`
+- **需求**：解析 CLI 参数（`--debug`、`--instance <name>`、`--version`），调用 `app.run()`
+- **验收**：`python -m flint --version` 输出版本号；`--debug` 开启 DEBUG 日志
+
+### `flint/app.py`
+- **需求**：创建 `QApplication`、开启高 DPI 缩放、加载 QSS 主题、安装全局异常钩子（捕获未处理异常写入日志并弹 Hint）、初始化 logging（控制台 + 文件轮转）、启动事件循环
+- **依赖**：`ui/main_window.py`、`ui/theme/`
+- **验收**：启动后显示主窗口；未捕获异常不崩溃，写入 `logs/flint.log`
+
+---
+
+## 三、`flint/ui/` 前端层
+
+### `ui/__init__.py`
+- 空文件，标记包
+
+### `ui/main_window.py`
+- **需求**：主窗口类 `MainWindow(QMainWindow)`，布局为顶部 `QTabBar`（启动/下载/设置/更多）+ 中部 `QSplitter`（左栏/右栏）+ 底部 `HintBar`；窗口最小 1000×680；支持自绘标题栏（可选）；响应 `router` 的页面切换信号
+- **依赖**：`router.py`、`hint_bar.py`、`theme/`
+- **验收**：四个标签可切换；分栏可拖拽；窗口缩放时布局不破
+
+### `ui/router.py`
+- **需求**：注册四个顶级标签，每个标签绑定一对 `(left_widget, right_widget)`；提供 `switch_tab(index)`、`get_current_pair()`；维护标签与页面的映射表
+- **依赖**：`pages/launch/`、`pages/download/`、`pages/settings/`、`pages/tools/`
+- **验收**：切换标签时左右栏同步切换；无内存泄漏（旧页面按需销毁或复用）
+
+### `ui/state.py`
+- **需求**：UI 级全局状态单例：当前选中实例、当前账户、运行中进程引用、当前标签索引；提供 `QObject` 信号（如 `instance_changed`、`account_changed`）供各页面订阅
+- **验收**：任意页面修改状态后，订阅方能收到信号
+
+### `ui/bridge.py`
+- **需求**：★ 前后端唯一耦合点。订阅 `core/events.py` 的事件，转成 Qt Signal 投递到主线程；提供 `run_async(coro)` 把协程提交到后端 event loop 线程；用 `QMetaObject.invokeMethod` 或 `Signal` 保证跨线程安全
+- **依赖**：`core/events.py`
+- **验收**：后端进度事件 → UI 进度条实时刷新；UI 不阻塞
+
+### `ui/hint_bar.py`
+- **需求**：底部非模态提示条 `HintBar(QFrame)`；支持 `info/warn/error` 三种样式；滑入淡出动画（`QPropertyAnimation`）；普通提示 3 秒自动消失，error 需手动关闭
+- **验收**：调用 `hint.show("msg", level="info")` 后正确显示并自动隐藏
+
+### `ui/overlay.py`
+- **需求**：内容区遮罩 + 内嵌消息框（替代 `QMessageBox`）；半透明背景 + 居中卡片；支持确认/取消按钮、自定义内容 widget
+- **验收**：删除实例前弹出确认，不弹独立窗口
+
+### `ui/pages/launch/left.py`
+- **需求**：版本列表 `QListView` + 自定义 delegate（图标、版本名、加载器标签、选中态）；右键菜单（编辑/复制/删除/打开文件夹）；底部“+ 新建”按钮跳转下载页
+- **依赖**：`core/instance.py`、`widgets/version_item.py`
+- **验收**：列表可选中、右键菜单可用、新建按钮跳转正确
+
+### `ui/pages/launch/right.py`
+- **需求**：组装 `views/launch_panel.py`；顶部显示当前版本名 + 加载器；无选中版本时显示引导文案
+- **依赖**：`views/launch_panel.py`
+- **验收**：切换左栏版本时右栏同步更新
+
+### `ui/pages/download/left.py`
+- **需求**：分类导航列表（游戏版本/Mod/整合包/资源包）；选中项高亮
+- **验收**：点击分类后右栏切换对应内容
+
+### `ui/pages/download/right.py`
+- **需求**：搜索框 + 结果列表 + 安装配置面板（`views/install_panel.py`）；安装进度内嵌在底部
+- **依赖**：`views/install_panel.py`、`core/loader.py`
+- **验收**：选择版本 + 加载器后可开始安装，进度实时显示
+
+### `ui/pages/settings/left.py`
+- **需求**：设置分类列表（启动/Java/界面/下载/联机/高级）
+- **验收**：点击分类右栏切换对应表单
+
+### `ui/pages/settings/right.py`
+- **需求**：根据左栏选中项渲染对应表单；表单控件即时保存到 `core/config.py`；提供“恢复默认”按钮
+- **依赖**：`core/config.py`
+- **验收**：修改设置后重启仍生效
+
+### `ui/pages/tools/left.py`
+- **需求**：工具列表（日志/模组管理/账户/关于）
+- **验收**：点击切换右栏
+
+### `ui/pages/tools/right.py`
+- **需求**：根据左栏选中项加载对应 `views/` 面板（`log_panel`/`mods_panel`/`account_panel`/`about_panel`）
+- **验收**：各面板功能正常
+
+### `ui/views/launch_panel.py`
+- **需求**：大号“启动游戏”按钮（`widgets/big_button.py`）+ 账户状态行（头像+名字+切换）+ 内存滑块（`widgets/memory_slider.py`）+ Java 路径下拉 + 最近日志摘要（3 行）；启动中按钮变禁用态并显示“启动中…”
+- **依赖**：`core/launcher.py`、`core/account.py`、`platform/java.py`、`bridge.py`
+- **验收**：点击启动后游戏进程拉起，按钮状态正确切换
+
+### `ui/views/install_panel.py`
+- **需求**：版本选择器 + 加载器单选（原版/Fabric/Forge/Quilt/NeoForge）+ 加载器版本下拉 + 实例名称输入 + “开始安装”按钮 + 内嵌进度条与任务列表
+- **依赖**：`core/version.py`、`core/loader.py`、`core/tasks.py`
+- **验收**：安装流程完整，进度实时，可取消
+
+### `ui/views/mods_panel.py`
+- **需求**：模组/资源包列表（名称、版本、启用状态开关）；拖拽导入；冲突提示
+- **依赖**：`core/mods.py`
+- **验收**：启停开关即时生效，文件正确移动
+
+### `ui/views/account_panel.py`
+- **需求**：账户列表（头像+名字+类型+默认标记）；添加微软账户（设备码流程 UI）/离线账户；刷新 token；退出登录；设为默认
+- **依赖**：`core/account.py`
+- **验收**：微软登录流程完整，离线账户可创建
+
+### `ui/views/log_panel.py`
+- **需求**：日志视图（`widgets/log_view.py`）+ 级别过滤下拉 + 来源过滤（全部/启动器/游戏/下载）+ 清空/导出按钮
+- **依赖**：`core/events.py`（订阅日志事件）
+- **验收**：游戏 stdout/stderr 实时显示，颜色正确
+
+### `ui/views/about_panel.py`
+- **需求**：Flint 版本、构建信息、GPLv3 声明、开源致谢列表、GitHub 链接
+- **验收**：信息准确，链接可点击
+
+### `ui/widgets/big_button.py`
+- **需求**：主色大按钮，高度 48-56px，`objectName` 供 QSS 定制，支持禁用态、加载态（文字+动画）
+- **验收**：视觉突出，点击反馈明确
+
+### `ui/widgets/version_item.py`
+- **需求**：`QStyledItemDelegate` 子类，绘制版本列表项（图标/名称/加载器标签/选中高亮）
+- **验收**：列表项渲染正确，选中态明显
+
+### `ui/widgets/memory_slider.py`
+- **需求**：滑块 + 数值标签联动，范围 512MB–系统内存上限，步进 256MB，显示推荐值标记
+- **验收**：拖动滑块数值实时更新
+
+### `ui/widgets/progress_dialog.py`
+- **需求**：模态进度对话框，带“后台运行”按钮（点击后转入 `task_panel`）；支持取消
+- **验收**：后台运行后对话框关闭，任务继续
+
+### `ui/widgets/task_panel.py`
+- **需求**：右下角可折叠浮层，显示并发任务列表（名称/进度/状态/取消按钮）；支持“全部取消”
+- **验收**：多任务并行时正确显示
+
+### `ui/widgets/toast.py`
+- **需求**：右上角滑入通知，3 秒自动消失，error 类需手动关闭
+- **验收**：调用 `toast.show(msg, level)` 正确显示
+
+### `ui/widgets/avatar.py`
+- **需求**：账户头像圆形显示；支持皮肤 3D 预览（可选，第二版）
+- **验收**：头像加载正确，占位图兜底
+
+### `ui/widgets/log_view.py`
+- **需求**：`QPlainTextEdit` 子类，环形缓冲最多 5000 行，批量追加（避免逐行刷新），按级别着色
+- **验收**：大量日志不卡顿，颜色正确
+
+### `ui/theme/light.qss` / `dark.qss`
+- **需求**：完整 QSS，定义主色变量（通过 `@var` 或注释约定）、按钮/输入框/列表/滚动条/标签样式；两套主题结构一致仅颜色不同
+- **验收**：切换主题即时生效，无样式错乱
+
+### `ui/theme/icons/`
+- **需求**：SVG 图标集（Lucide 风格），命名与用途对应（`launch.svg`、`settings.svg` 等）
+- **验收**：图标在高 DPI 下清晰
+
+### `ui/i18n/flint_zh_CN.ts` / `flint_en_US.ts`
+- **需求**：`QTranslator` 加载的翻译文件，覆盖所有用户可见文案
+- **验收**：切换语言后 UI 文案更新
+
+---
+
+## 四、`flint/core/` 应用服务层
+
+### `core/config.py`
+- **需求**：全局常量（默认下载源、默认内存、路径常量）、配置读写（TOML）、`Config` 类提供 `get/set/save/load`；配置变更发事件
+- **验收**：读写往返一致，默认值兜底
+
+### `core/events.py`
+- **需求**：事件总线，支持 `subscribe(event_type, callback)` / `emit(event_type, payload)`；事件类型：`progress`、`log`、`task_started`、`task_finished`、`instance_changed`、`account_changed`
+- **验收**：多订阅者都能收到事件
+
+### `core/tasks.py`
+- **需求**：`Task` 抽象基类（`run()`、`cancel()`、`progress` 属性）、`TaskRunner` 管理并发任务队列、支持优先级与取消传播
+- **验收**：任务可取消，进度回调正确
+
+### `core/instance.py`
+- **需求**：`Instance` 数据类（名称/版本/加载器/内存/Java 路径/游戏目录）、`InstanceManager` 提供 `create/list/get/delete/clone/export/import`；实例元数据存 JSON
+- **验收**：CRUD 正确，导入导出可往返
+
+### `core/version.py`
+- **需求**：拉取 `version_manifest.json`、解析版本 JSON、**继承链合并**（`inheritsFrom`）、libraries `rules` 字段按 os/arch 过滤；带 ETag 缓存
+- **验收**：正确解析 1.20+ 版本，继承链合并无误
+
+### `core/loader.py`
+- **需求**：Forge（调用安装器 jar）、Fabric/Quilt（下载 loader JSON 并注入）、NeoForge 安装；安装后更新实例版本 JSON
+- **验收**：四种加载器均可安装成功
+
+### `core/account.py`
+- **需求**：微软 OAuth 设备码流程（获取 device code → 轮询 token → 刷新）、离线账户（用户名生成 UUID）、账户持久化与加密存储
+- **验收**：微软登录成功获取 accessToken，离线账户可创建
+
+### `core/launcher.py`
+- **需求**：拼 classpath（libraries + 客户端 jar）、JVM 参数（内存/GC/`-Djava.library.path`）、游戏参数（用户名/UUID/accessToken/版本名）；调用 `infra/process.py` 拉起 Java；捕获 stdout/stderr 发事件
+- **验收**：手动构造命令可启动游戏，日志实时回传
+
+### `core/libraries.py`
+- **需求**：根据版本 JSON 生成 libraries 下载计划（URL/SHA1/目标路径）、natives 分类（按平台提取 classifier）
+- **验收**：下载计划完整，natives 路径正确
+
+### `core/assets.py`
+- **需求**：解析 assets index、生成资源对象下载计划、校验已有资源
+- **验收**：资源补全后游戏不报缺资源
+
+### `core/mods.py`
+- **需求**：扫描 `mods/`、`resourcepacks/` 目录；解析模组元数据（fabric.mod.json / META-INF）；启用/禁用（改扩展名）；冲突检测（同 modid 重复）
+- **验收**：启停生效，冲突提示正确
+
+---
+
+## 五、`flint/infra/` 基础设施层
+
+### `infra/http.py`
+- **需求**：统一 `httpx.AsyncClient` 工厂，配置代理/超时/UA/重试；提供 `get_client()` 单例
+- **验收**：代理配置生效
+
+### `infra/downloader.py`
+- **需求**：并发下载（信号量控制并发数）、断点续传（Range 头）、镜像源切换（失败自动换源）、指数退避重试；进度回调
+- **验收**：大文件下载可续传，镜像切换生效
+
+### `infra/hash.py`
+- **需求**：经 `native_loader` 调 C++ `flint_hash_file`；C++ 不可用时回退 `hashlib`；提供 `hash_file(path, algo)` 和 `hash_bytes(data, algo)`
+- **验收**：C++ 与 Python 结果一致
+
+### `infra/extract.py`
+- **需求**：经 `native_loader` 调 C++ `flint_extract_zip`；回退 `zipfile`；支持取消令牌；防 Zip Slip（路径穿越校验）
+- **验收**：解压正确，恶意路径被拦截
+
+### `infra/fs.py`
+- **需求**：原子写（临时文件 + rename）、大文件复制（可选走 C++）、目录递归复制、安全删除
+- **验收**：写入中断不损坏原文件
+
+### `infra/process.py`
+- **需求**：`subprocess` 封装，异步读取 stdout/stderr 并逐行回调；进程树终止（Windows `taskkill /T`，Unix 进程组 kill）；返回退出码
+- **验收**：游戏输出实时回传，终止时子进程全清
+
+### `infra/cache.py`
+- **需求**：ETag/Last-Modified 缓存，按 URL 存元数据；提供 `get(url)` / `set(url, etag, content)`；过期策略
+- **验收**：重复请求命中缓存不发网络请求
+
+### `infra/native_loader.py`
+- **需求**：★ 动态库查找（环境变量 → 包内 `flint/lib/` → 系统路径）、加载、ABI 版本校验、函数签名声明、Pythonic 包装、失败回退纯 Python、线程安全单例
+- **验收**：库缺失/ABI 不匹配时优雅回退，日志清晰
+
+---
+
+## 六、`flint/platform/` 平台适配层
+
+### `platform/paths.py`
+- **需求**：各 OS 标准目录：Windows `%APPDATA%/Flint`、macOS `~/Library/Application Support/Flint`、Linux `~/.config/flint`；游戏实例目录、缓存目录、日志目录
+- **验收**：三平台路径正确
+
+### `platform/java.py`
+- **需求**：探测已安装 JRE/JDK（注册表/`/usr/libexec/java_home`/`update-alternatives`/常见路径）；解析 `java -version` 输出；根据 MC 版本推荐 Java 版本（1.16-→Java 8，1.17→Java 16，1.18+→Java 17，1.20.5+→Java 21）
+- **验收**：正确识别 Java 版本，推荐匹配
+
+### `platform/proc.py`
+- **需求**：Windows 创建无窗口子进程（`CREATE_NO_WINDOW`）、进程组管理；Unix 用 `start_new_session=True`；优雅终止（先 SIGTERM，超时后 SIGKILL）
+- **验收**：启动游戏不弹黑框，终止干净
+
+### `platform/perm.py`
+- **需求**：macOS 沙箱权限检查、Linux 可执行位设置、Windows 文件锁定检测
+- **验收**：权限问题给出明确提示
+
+---
+
+## 七、`flint/lib/`
+
+- **需求**：运行时 C++ 动态库目录，`.gitkeep` 占位；构建产物放此处；`native_loader` 优先从此查找
+- **验收**：`git clone` 后目录存在，构建后产物就位
+
+---
+
+## 八、`flint/native/` C++ 核心库
+
+### `native/include/flint_native.h`
+- **需求**：`extern "C"` 导出声明、ABI 版本宏、返回码常量、函数签名（`flint_abi_version`/`flint_hash_file`/`flint_extract_zip`/`flint_copy_file`/`flint_last_error`）；完整 docstring
+- **验收**：C 编译器可编译，Python ctypes 可声明
+
+### `native/src/hash.cpp`
+- **需求**：分块 SHA1/SHA256 实现（或调 `third_party/sha2`）；支持大文件流式读取；线程安全
+- **验收**：与 `hashlib` 结果一致
+
+### `native/src/unzip.cpp`
+- **需求**：ZIP 解压（调 `third_party/miniz`）；路径穿越校验；取消令牌支持
+- **验收**：解压正确，恶意路径被拒
+
+### `native/src/fs.cpp`
+- **需求**：大文件复制（带进度回调、取消支持）、原子写
+- **验收**：大文件复制不占内存
+
+### `native/src/abort.cpp`
+- **需求**：取消令牌实现（`volatile int` 检查），供各函数轮询
+- **验收**：取消后函数快速返回
+
+### `native/src/version.cpp`
+- **需求**：导出 `flint_abi_version()` 返回 `FLINT_NATIVE_ABI_VERSION`
+- **验收**：返回正确版本号
+
+### `native/bindings/pybind11_module.cpp`
+- **需求**：预留文件，当前不参与构建；注释说明未来升级 pybind11 的路径
+- **验收**：不影响当前构建
+
+### `native/third_party/miniz/` / `sha2/`
+- **需求**：第三方源码直接编译进来；保留原始 LICENSE
+- **验收**：构建成功
+
+### `native/CMakeLists.txt`
+- **需求**：C++17、三平台构建、`SHARED` 库、`stage` 自定义 target 复制产物到 `flint/lib/`、POSITION_INDEPENDENT_CODE、平台特定配置
+- **验收**：三平台 `cmake --build` 成功，产物就位
+
+### `native/README.md`
+- **需求**：构建命令、产物命名约定、ABI 变更流程
+- **验收**：新人可按文档构建
+
+---
+
+## 九、`tests/`
+
+| 文件 | 需求 |
+|---|---|
+| `conftest.py` | 公共 fixture：临时目录、mock 配置、事件循环、`respx` mock 路由 |
+| `test_version.py` | manifest 解析、继承链合并、rules 过滤；覆盖缺失父版本、JSON 损坏 |
+| `test_downloader.py` | 并发下载、断点续传、镜像切换、重试；`respx` mock 网络 |
+| `test_hash.py` | C++ 与纯 Python 结果对比；大文件分块正确性 |
+| `test_extract.py` | 正常解压、Zip Slip 拦截、取消 |
+| `test_launcher.py` | 命令构造正确性（classpath/JVM 参数/游戏参数） |
+| `test_instance.py` | CRUD、克隆、导入导出往返 |
+| `test_account.py` | 离线 UUID 生成、token 刷新 mock |
+| `test_native_loader.py` | 库缺失回退、ABI 不匹配回退、加载成功路径 |
+
+---
+
+## 十、`build/`
+
+| 文件 | 需求 |
+|---|---|
+| `nuitka.py` | Nuitka 构建配置：入口 `flint/__main__.py`、包含 `flint/lib/` 动态库、图标、三平台输出名 |
+| `briefcase.toml` | Briefcase 备选配置（macOS `.app` / Windows MSI / Linux deb） |
+| `cmake_build.py` | 三平台调用 CMake 编译 C++ 库的脚本，产物复制到 `flint/lib/` |
+| `stage_native.py` | 把构建产物按平台命名放入 `flint/lib/`，校验 ABI 版本 |
+
+---
+
+## 十一、`.github/workflows/`
+
+| 文件 | 需求 |
+|---|---|
+| `test.yml` | 三平台矩阵：安装依赖 → 编译 C++ → 跑 pytest → 上传覆盖率 |
+| `release.yml` | tag 触发 → 三平台构建（Nuitka + CMake）→ 打包 → 创建 GitHub Release |
+
+---
+
+## 十二、`docs/`
+
+| 文件 | 需求 |
+|---|---|
+| `architecture.md` | 分层图、依赖方向、数据流（一次启动的完整链路） |
+| `ui.md` | PCL 式导航模型、页面配对规则、操作路径约束（≤2 次点击） |
+| `native.md` | C++ ABI 约定、函数签名、构建命令、回退策略、ABI 变更检查清单 |
+| `contributing.md` | 开发环境搭建、代码风格、提交规范、PR 流程 |
+
+---
+
+## 开发优先级建议
+
+| 阶段 | 模块 | 目标 |
+|---|---|---|
+| P0 | `core/config` + `core/version` + `infra/http` + `infra/downloader` | 打通版本解析与下载 |
+| P0 | `native/` 三件套 + `infra/native_loader` + `infra/hash` | 打通 Python↔C++ |
+| P1 | `core/launcher` + `platform/java` + `infra/process` | 能手动拉起游戏 |
+| P1 | `ui/main_window` + `ui/router` + `theme/dark.qss` | UI 骨架 |
+| P2 | `ui/pages/launch/*` + `views/launch_panel` + `ui/bridge` | 第一个可用界面 |
+| P2 | `core/instance` + `core/account` | 实例与账户 |
+| P3 | 下载页/设置页/工具页 + 各 views | 功能完整 |
+| P3 | `build/` + CI | 可分发 |
+| P4 | i18n、浅色主题、皮肤预览 | 打磨 |
