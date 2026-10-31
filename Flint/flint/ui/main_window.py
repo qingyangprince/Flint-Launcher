@@ -1,249 +1,153 @@
 # flint/ui/main_window.py
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QSplitter,
-    QTabBar, QLabel, QApplication
+    QTabBar, QLabel, QApplication, QStackedWidget,
 )
 from PySide6.QtCore import Qt, Signal, QTimer
 
-try:
-    from .hint_bar import HintBar
-    from .pages.launch.left import LaunchLeftPanel
-    from .views.launch_panel import LaunchPanel
-except ImportError:
-    from hint_bar import HintBar
-    from pages.launch.left import LaunchLeftPanel
-    from views.launch_panel import LaunchPanel
+from .hint_bar import HintBar
+from .router import Router
+from .pages.launch.left import LaunchLeftPanel
+from .pages.download.left import DownloadLeftPanel
+from .pages.download.right import DownloadRightPanel
+from .pages.settings.left import SettingsLeftPanel
+from .pages.settings.right import SettingsRightPanel
+from .views.launch_panel import LaunchPanel
 
+QSS_PATH = Path(__file__).parent / "theme" / "dark.qss"
 
 class MainWindow(QMainWindow):
     tab_changed = Signal(int)
 
-    def __init__(self, router=None, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.router = router
         self.setWindowTitle("Flint Launcher")
         self.setMinimumSize(1000, 680)
         self.init_ui()
+        self._load_qss()
 
     def init_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
-        
-        # ==========================================
-        # 🎨 全局样式表（未来可以抽离到 theme/dark.qss）
-        # ==========================================
-        self.setStyleSheet("""
-            /* 全局基础 */
-            QWidget {
-                color: #e0e0e0;
-                font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
-            }
-
-            /* 主分栏背景 */
-            #MainSplitter {
-                background-color: #1a1a1a;
-            }
-
-            /* 顶部标签栏 */
-            #MainTabBar::tab {
-                background-color: #1e1e1e;
-                padding: 12px 40px;
-                font-size: 14px;
-                color: #888;
-                border-bottom: 2px solid transparent;
-            }
-            #MainTabBar::tab:selected {
-                color: #3b82f6;
-                border-bottom: 2px solid #3b82f6;
-                background-color: #252525;
-            }
-            #MainTabBar::tab:hover {
-                color: #ccc;
-            }
-
-            /* 账户状态行 */
-            #AccountRow {
-                background-color: #2b2b2b;
-                border-radius: 8px;
-            }
-            #AccountName {
-                font-size: 16px;
-                font-weight: bold;
-                color: #ffffff;
-            }
-            #AccountType {
-                font-size: 12px;
-                color: #aaaaaa;
-            }
-            #AccountSwitch {
-                background-color: #3a3a3a;
-                border: 1px solid #555;
-                border-radius: 4px;
-                color: #ccc;
-            }
-            #AccountSwitch:hover {
-                background-color: #4a4a4a;
-                color: white;
-            }
-
-            /* 大启动按钮 */
-            #LaunchButton {
-                background-color: #3b82f6;
-                color: white;
-                font-size: 18px;
-                font-weight: bold;
-                border-radius: 8px;
-                border: none;
-            }
-            #LaunchButton:hover {
-                background-color: #2563eb;
-            }
-            #LaunchButton:disabled {
-                background-color: #555555;
-                color: #999999;
-            }
-
-            /* Java 下拉框 */
-            #JavaSelector {
-                background-color: #2b2b2b;
-                border: 1px solid #444;
-                border-radius: 6px;
-                padding: 6px 10px;
-                color: white;
-            }
-            #JavaSelector::drop-down {
-                border: none;
-                width: 20px;
-            }
-
-            /* 底部日志框 */
-            #LaunchLogBrief {
-                background-color: #121212;
-                border: 1px solid #333;
-                border-radius: 6px;
-                padding: 6px;
-                color: #888;
-                font-family: Consolas, monospace;
-                font-size: 12px;
-            }
-
-            /* 内存滑块 */
-            #MemorySlider QSlider::groove:horizontal {
-                height: 6px;
-                background: #333;
-                border-radius: 3px;
-            }
-            #MemorySlider QSlider::handle:horizontal {
-                background: #3b82f6;
-                width: 16px;
-                height: 16px;
-                margin: -5px 0;
-                border-radius: 8px;
-            }
-            #MemorySlider QSlider::sub-page:horizontal {
-                background: #3b82f6;
-                border-radius: 3px;
-            }
-            #MemoryValue {
-                color: #3b82f6;
-                font-weight: bold;
-            }
-            
-            /* 左侧列表 */
-            #LaunchLeftPanel {
-                background-color: #1a1a1a;
-                border-right: 1px solid #222;
-            }
-            #NewInstanceButton {
-                background-color: #2b2b2b;
-                border: 1px solid #444;
-                border-radius: 6px;
-                padding: 8px;
-                color: #ccc;
-            }
-            #NewInstanceButton:hover {
-                background-color: #3a3a3a;
-                color: white;
-            }
-        """)
-        # =========================================
 
         layout = QVBoxLayout(central)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
+        # 顶：四页
         self.tab_bar = QTabBar()
         self.tab_bar.setObjectName("MainTabBar")
         for name in ("启动", "下载", "设置", "更多"):
             self.tab_bar.addTab(name)
-        self.tab_bar.currentChanged.connect(self._on_tab_changed)
-        
-        self.tab_bar.setStyleSheet("""
-            QTabBar::tab { padding: 10px 40px; font-size: 14px; color: #aaa; background: #2b2b2b; }
-            QTabBar::tab:selected { color: white; border-bottom: 2px solid #3b82f6; }
-        """)
         layout.addWidget(self.tab_bar)
 
+        # 中：左右二栈，路由统揽
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.setObjectName("MainSplitter")
         self.splitter.setChildrenCollapsible(False)
 
-        # 左栏
-        self.left_widget = LaunchLeftPanel()
-        self.left_widget.setStyleSheet("background-color: #1e1e1e;")
-        self.left_widget.set_versions([
-            ("1.20.1", "Fabric"), ("1.19.2", "Forge"),
-            ("1.12.2", "原版"), ("1.7.10", "Forge")
-        ])
-        self.left_widget.version_selected.connect(self._on_version_selected)
+        self.left_stack = QStackedWidget()
+        self.right_stack = QStackedWidget()
+        self.router = Router(self.left_stack, self.right_stack, self)
 
-        # 右栏：使用重构后的启动面板
-        self.right_widget = LaunchPanel()
-        self.right_widget.setStyleSheet("background-color: #1e1e1e;")
-        
-        # 注入测试数据
-        self.right_widget.set_account("Steve", "微软账户", "👤")
-        self.right_widget.set_java_candidates(["Java 17 (内置)", "Java 21 (系统)"])
-        self.right_widget.append_log("加载配置文件成功...")
-        self.right_widget.append_log("检查版本资源完整性...")
+        # 页面注册顺序必须和 tab_bar 的索引一致
+        self._build_launch_page()       # 0
+        self._build_download_page()     # 1
+        self._build_settings_page()     # 2
+        self._build_placeholder_page("更多") # 3
 
-        # 绑定信号
-        self.right_widget.launch_requested.connect(self._on_launch_clicked)
-        self.right_widget.switch_account_requested.connect(self._on_switch_account)
-
-        self.splitter.addWidget(self.left_widget)
-        self.splitter.addWidget(self.right_widget)
+        self.splitter.addWidget(self.left_stack)
+        self.splitter.addWidget(self.right_stack)
         self.splitter.setStretchFactor(0, 0)
         self.splitter.setStretchFactor(1, 1)
         self.splitter.setSizes([250, 750])
         layout.addWidget(self.splitter, 1)
 
+        # 底：一条提示
         self.hint_bar = HintBar()
         layout.addWidget(self.hint_bar)
 
+        self.tab_bar.currentChanged.connect(self._on_tab_changed)
+        self.tab_bar.setCurrentIndex(0)
+        self._on_tab_changed(0)
+
+    def _build_launch_page(self):
+        left = LaunchLeftPanel()
+        left.set_versions([("1.20.1", "Fabric"), ("1.12.2", "原版")])
+        left.version_selected.connect(self._on_version_selected)
+        left.new_requested.connect(lambda: self.tab_bar.setCurrentIndex(1))
+
+        right = LaunchPanel()
+        right.set_account("Steve", "微软账户", "👤")
+        right.set_java_candidates(["Java 17 (内置)", "Java 21 (系统)"])
+        right.launch_requested.connect(self._on_launch_clicked)
+        right.switch_account_requested.connect(
+            lambda: self.show_hint("切换账户", "info")
+        )
+
+        self.router.register(0, left, right)
+
+    def _build_download_page(self):
+        left = DownloadLeftPanel()
+        right = DownloadRightPanel()
+        left.category_selected.connect(right.set_category)
+        right.search_requested.connect(
+            lambda kw: self.show_hint(f"搜索：{kw}", "info")
+        )
+        self.router.register(1, left, right)
+
+    def _build_settings_page(self):
+        left = SettingsLeftPanel()
+        right = SettingsRightPanel()
+        
+        left.category_selected.connect(right.set_category)
+        right.setting_changed.connect(self._on_setting_changed)
+        right.reset_requested.connect(self._on_setting_reset)
+
+        idx = self.left_stack.count()  # 索引由栈自长，不假人手
+        self.router.register(idx, left, right)
+
+    def _build_placeholder_page(self, name: str):
+        idx = self.left_stack.count()
+        self.router.register(idx, self._placeholder(f"{name} · 左"), self._placeholder(f"{name} · 右"))
+
+    def _placeholder(self, text: str) -> QWidget:
+        w = QWidget()
+        l = QVBoxLayout(w)
+        label = QLabel(text)
+        label.setObjectName("PlaceholderLabel")
+        label.setAlignment(Qt.AlignCenter)
+        l.addWidget(label)
+        return w
+
     def _on_tab_changed(self, index: int):
         self.tab_changed.emit(index)
-        if self.router is not None:
-            self.router.switch_tab(index)
+        if not self.router.switch_tab(index):
+            self.show_hint(f"页面 {index} 尚未就绪", "warn")
 
     def _on_version_selected(self, version_name: str):
-        self.show_hint(f"你选中了版本：{version_name}", "info")
+        self.show_hint(f"选中版本：{version_name}", "info")
 
     def _on_launch_clicked(self):
-        self.right_widget.set_running(True)
-        self.show_hint("正在尝试启动游戏...", "info")
-        self.right_widget.append_log("正在启动 Java 进程...")
-        
-        # 模拟启动
-        QTimer.singleShot(3000, lambda: self.right_widget.set_running(False))
-        QTimer.singleShot(3000, lambda: self.show_hint("启动准备就绪！", "info"))
-        QTimer.singleShot(3000, lambda: self.right_widget.append_log("游戏进程已启动。"))
+        self.show_hint("正在启动…", "info")
+        # 暂为演示，后续换 core.launcher
+        QTimer.singleShot(1500, lambda: self.show_hint("准备就绪", "info"))
 
-    def _on_switch_account(self):
-        self.show_hint("准备打开账户切换窗口...", "info")
+    def _on_setting_changed(self, key: str, value):
+        # 未来直连 core.config；此刻先透传一条提示
+        self.show_hint(f"{key} → {value}", "info")
+
+    def _on_setting_reset(self, category: str):
+        self.show_hint(f"{category} 已归元", "info")
 
     def show_hint(self, text: str, level: str = "info", duration: int = 3000):
         self.hint_bar.show_message(text, level=level, duration=duration)
+
+    def _load_qss(self):
+        if QSS_PATH.exists():
+            self.setStyleSheet(QSS_PATH.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

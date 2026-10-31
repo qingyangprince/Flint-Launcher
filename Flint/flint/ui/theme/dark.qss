@@ -1,0 +1,153 @@
+/* flint/ui/theme/dark.qss */
+QWidget {
+    color: #e0e0e0;
+    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+}
+
+#MainSplitter,
+#LaunchLeftPanel,
+#DownloadLeftPanel { background-color: #1a1a1a; }
+
+#RightPane,
+#LaunchPanel,
+#DownloadRightPanel { background-color: #1e1e1e; }
+
+#MainTabBar::tab {
+    background-color: #1e1e1e;
+    padding: 12px 40px;
+    font-size: 14px;
+    color: #888;
+    border-bottom: 2px solid transparent;
+}
+#MainTabBar::tab:selected {
+    color: #3b82f6;
+    border-bottom: 2px solid #3b82f6;
+    background-color: #252525;
+}
+
+#VersionList { background: transparent; border: none; outline: none; }
+
+#CategoryList { background: transparent; border: none; outline: none; }
+#CategoryList::item {
+    padding: 12px;
+    border-radius: 6px;
+    color: #ccc;
+    margin-bottom: 4px;
+}
+#CategoryList::item:selected { background-color: #3b82f6; color: white; }
+#CategoryList::item:hover { background-color: #2b2b2b; }
+
+#SearchBox {
+    background-color: #2b2b2b;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: white;
+}
+#SearchBox:focus { border: 1px solid #3b82f6; }
+
+#SearchButton {
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 6px;
+    padding: 8px 20px;
+}
+#SearchButton:hover { background-color: #2563eb; }
+
+#DownloadHint,
+#PlaceholderLabel { color: #888; font-size: 16px; }
+
+#AccountRow { background-color: #2b2b2b; border-radius: 8px; }
+#AccountName { font-size: 16px; font-weight: bold; color: #ffffff; }
+#AccountType { font-size: 12px; color: #aaaaaa; }
+#AccountSwitch {
+    background-color: #3a3a3a;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #ccc;
+}
+#AccountSwitch:hover { background-color: #4a4a4a; color: white; }
+
+#LaunchButton {
+    background-color: #3b82f6;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+}
+#LaunchButton:hover { background-color: #2563eb; }
+#LaunchButton:disabled { background-color: #555; color: #999; }
+
+#JavaSelector {
+    background-color: #2b2b2b;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: white;
+}
+
+#LaunchLogBrief {
+    background-color: #121212;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 6px;
+    color: #888;
+    font-family: Consolas, monospace;
+    font-size: 12px;
+}
+
+#MemorySlider QSlider::groove:horizontal {
+    height: 6px; background: #333; border-radius: 3px;
+}
+#MemorySlider QSlider::handle:horizontal {
+    background: #3b82f6; width: 16px; height: 16px;
+    margin: -5px 0; border-radius: 8px;
+}
+#MemorySlider QSlider::sub-page:horizontal {
+    background: #3b82f6; border-radius: 3px;
+}
+#MemoryValue { color: #3b82f6; font-weight: bold; }
+
+#NewInstanceButton {
+    background-color: #2b2b2b;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px;
+    color: #ccc;
+}
+#NewInstanceButton:hover { background-color: #3a3a3a; color: white; }
+/* --- 设置页面新增控件 --- */
+#ResetButton {
+    background-color: transparent;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 6px 16px;
+    color: #ccc;
+}
+#ResetButton:hover { border-color: #3b82f6; color: #3b82f6; }
+
+#PathInput {
+    background-color: #2b2b2b;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: white;
+}
+#PathInput:focus { border-color: #3b82f6; }
+
+#BrowseButton {
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 6px;
+    padding: 6px 16px;
+}
+#BrowseButton:hover { background-color: #2563eb; }
+
+#ThemeCombo {
+    background-color: #2b2b2b;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: white;
+}
