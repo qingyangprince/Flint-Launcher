@@ -43,9 +43,9 @@ wheel.packages = ["flint"]
 build-dir = "build/{wheel_tag}"
 
 [tool.scikit-build.cmake]
-minimum-version = "3.18"
+version = "3.18"
 build-type = "Release"
-source-dir = "native"
+source-dir = "flint/native"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
