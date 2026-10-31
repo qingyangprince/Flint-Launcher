@@ -15,6 +15,8 @@ from .pages.download.right import DownloadRightPanel
 from .pages.settings.left import SettingsLeftPanel
 from .pages.settings.right import SettingsRightPanel
 from .views.launch_panel import LaunchPanel
+from .pages.tools.left import ToolsLeftPanel
+from .pages.tools.right import ToolsRightPanel
 
 QSS_PATH = Path(__file__).parent / "theme" / "dark.qss"
 
@@ -56,7 +58,7 @@ class MainWindow(QMainWindow):
         self._build_launch_page()       # 0
         self._build_download_page()     # 1
         self._build_settings_page()     # 2
-        self._build_placeholder_page("更多") # 3
+        self._tools_right = self._build_tools_page()  # 3 保存引用方便测试
 
         self.splitter.addWidget(self.left_stack)
         self.splitter.addWidget(self.right_stack)
@@ -109,6 +111,19 @@ class MainWindow(QMainWindow):
         idx = self.left_stack.count()  # 索引由栈自长，不假人手
         self.router.register(idx, left, right)
 
+    def _build_tools_page(self):
+        left = ToolsLeftPanel()
+        right = ToolsRightPanel()
+        left.category_selected.connect(right.set_category)
+        
+        # 监听日志按钮事件
+        right.log_cleared.connect(lambda: self.show_hint("日志已清空", "info"))
+        right.log_export_requested.connect(lambda: self.show_hint("日志导出待接入", "warn"))
+
+        idx = self.left_stack.count()
+        self.router.register(idx, left, right)
+        return right
+    
     def _build_placeholder_page(self, name: str):
         idx = self.left_stack.count()
         self.router.register(idx, self._placeholder(f"{name} · 左"), self._placeholder(f"{name} · 右"))
@@ -152,8 +167,17 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     import sys
+    from PySide6.QtWidgets import QApplication
+    from PySide6.QtCore import QTimer
+
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
     window = MainWindow()
+    
+    # 测试：向工具页的日志组件投喂一条假数据
+    QTimer.singleShot(1000, lambda: window._tools_right.append_log("这是一条测试日志", "INFO", "系统"))
+    QTimer.singleShot(1500, lambda: window._tools_right.append_log("警告：内存较低", "WARN", "启动器"))
+    QTimer.singleShot(2000, lambda: window._tools_right.append_log("出错了！", "ERROR", "游戏"))
+
     window.show()
     sys.exit(app.exec())
