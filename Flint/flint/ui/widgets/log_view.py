@@ -16,11 +16,11 @@ class LogView(QPlainTextEdit):
         self.setObjectName("LogText")
         self.setReadOnly(True)
         self.setMaximumBlockCount(self.MAX_LINES)
-        self.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
 
     def append_line(self, line: str, level: str = "INFO", source: str = "启动器"):
         color = self._COLORS.get(level, "#e0e0e0")
-        self.moveCursor(QTextCursor.End)
+        self.moveCursor(QTextCursor.MoveOperation.End)
         self.appendHtml(
             f'<span style="color:{color}">[{level}] [{source}] {line}</span>'
         )

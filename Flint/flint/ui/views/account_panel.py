@@ -8,6 +8,6 @@ class AccountPanel(QWidget):
         self.setObjectName("AccountPanel")
         l = QVBoxLayout(self)
         label = QLabel("账户管理 · 待接入 core.account")
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setObjectName("PlaceholderLabel")
         l.addWidget(label)

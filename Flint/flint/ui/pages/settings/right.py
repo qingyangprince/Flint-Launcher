@@ -106,7 +106,7 @@ class SettingsRightPanel(QWidget):
         page = QWidget()
         l = QVBoxLayout(page)
         label = QLabel(f"<h2>{name}</h2><p>未至。</p>")
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         l.addWidget(label)
         return page
 

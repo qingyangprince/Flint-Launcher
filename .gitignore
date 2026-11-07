@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# 运行时
+logs/
+build/
+
+# 构建产物（原生动态库）
+Flint/flint/lib/

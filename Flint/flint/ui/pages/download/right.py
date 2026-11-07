@@ -36,7 +36,7 @@ class DownloadRightPanel(QWidget):
 
         self.content_label = QLabel("请在左侧选择分类")
         self.content_label.setObjectName("DownloadHint")
-        self.content_label.setAlignment(Qt.AlignCenter)
+        self.content_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.content_label, 1)
 
     def bind(self):

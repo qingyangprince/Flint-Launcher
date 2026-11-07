@@ -67,6 +67,24 @@ class ConfigChangedEvent:
     old_value: Any = None
 
 
+@dataclass(frozen=True)
+class InstanceChangedEvent:
+    """实例集合或选中项发生变化；``action`` 为 created/updated/deleted/cloned/selected。"""
+
+    action: str
+    instance: Any = None
+    key: str = ""
+
+
+@dataclass(frozen=True)
+class AccountChangedEvent:
+    """账户集合或当前账户发生变化；``action`` 为 added/removed/updated/selected。"""
+
+    action: str
+    account: Any = None
+    account_id: str = ""
+
+
 Callback = Callable[[Any], None]
 
 

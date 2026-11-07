@@ -185,3 +185,34 @@ QWidget {
 #AboutDesc { color: #aaa; font-size: 14px; }
 #AboutLicense { color: #3b82f6; font-weight: bold; }
 #AboutLink { color: #3b82f6; }
+/* --- 启动页（P2） --- */
+#LaunchTitle { font-size: 20px; font-weight: bold; color: #ffffff; }
+#LaunchSubtitle { font-size: 12px; color: #888; }
+#LoaderBadge {
+    background-color: #1f3b63;
+    color: #93c5fd;
+    border-radius: 10px;
+    padding: 3px 12px;
+    font-size: 12px;
+}
+#SectionLabel { font-size: 12px; color: #888; }
+#EmptyHint { color: #777; font-size: 14px; }
+#MemoryRecommend { color: #888; font-size: 12px; }
+
+#Overlay { background: transparent; }
+#OverlayCard {
+    background-color: #252525;
+    border: 1px solid #3a3a3a;
+    border-radius: 10px;
+}
+#OverlayTitle { font-size: 17px; font-weight: bold; color: #ffffff; }
+#OverlayMessage { color: #bbb; font-size: 13px; }
+#OverlayOkButton {
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 6px;
+    padding: 7px 20px;
+}
+#OverlayOkButton:hover { background-color: #2563eb; }
+#OverlayOkButton[danger="true"] { background-color: #dc2626; }
+#OverlayOkButton[danger="true"]:hover { background-color: #b91c1c; }

@@ -40,7 +40,7 @@ class HintBar(QFrame):
 
         self.fade = QPropertyAnimation(self.effect, b"opacity", self)
         self.fade.setDuration(180)
-        self.fade.setEasingCurve(QEasingCurve.OutCubic)
+        self.fade.setEasingCurve(QEasingCurve.Type.OutCubic)
         self.fade.finished.connect(self._on_fade_finished)
 
     def set_style(self, level: str):

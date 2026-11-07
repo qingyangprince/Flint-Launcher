@@ -8,7 +8,7 @@ class BigButton(QPushButton):
         self.setObjectName("BigButton") # 供 QSS 定制
         self.setMinimumHeight(48)
         self.setMaximumHeight(56)
-        self.setCursor(Qt.PointingHandCursor) # 鼠标悬停变小手
+        self.setCursor(Qt.CursorShape.PointingHandCursor) # 鼠标悬停变小手
         
         # 简单的默认样式（以后会抽离到 QSS 里）
         self.setStyleSheet("""

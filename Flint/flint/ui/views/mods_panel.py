@@ -8,7 +8,7 @@ class ModsPanel(QWidget):
         self.setObjectName("ModsPanel")
         l = QVBoxLayout(self)
         label = QLabel("模组管理 · 待接入 core.mods")
-        label.setAlignment(Qt.AlignCenter)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setObjectName("PlaceholderLabel")
         l.addWidget(label)
     
